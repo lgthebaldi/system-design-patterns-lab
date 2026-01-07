@@ -1,61 +1,65 @@
-import boto3
 import os
-# Importing local modules from the same directory
+import boto3
+import msal
 from connection_final import get_salesforce_connection
 from s3_reader import get_lab_bucket, read_file_content
+from dotenv import load_dotenv
 
-def run_integration():
-    """
-    Orchestrates the flow: 
-    1. Fetches data from AWS S3
-    2. Connects to Salesforce
-    3. Creates a record in Salesforce with the cloud data
-    """
-    print("🚀 Starting Cross-Cloud Integration: AWS S3 -> Salesforce")
+load_dotenv()
 
-    # --- 1. AWS S3 SECTION ---
-    # Initialize S3 client using default session credentials
+def get_azure_token():
+    """
+    Authenticates with Microsoft Entra ID (Azure AD) using Client Secret.
+    This validates the script's identity in the Microsoft ecosystem.
+    """
+    print("🔵 Authenticating with Azure Entra ID...")
+    
+    authority = f"https://login.microsoftonline.com/{os.getenv('AZURE_TENANT_ID')}"
+    app = msal.ConfidentialClientApplication(
+        os.getenv('AZURE_CLIENT_ID'),
+        authority=authority,
+        client_credential=os.getenv('AZURE_CLIENT_SECRET')
+    )
+
+    # Scopes for Microsoft Graph (Standard Identity Check)
+    result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+    
+    if "access_token" in result:
+        print("✅ Azure Identity Verified!")
+        return True
+    else:
+        print(f"❌ Azure Auth Failed: {result.get('error_description')}")
+        return False
+
+def run_triad_integration():
+    print("🚀 Starting FULL TRIAD Integration: AWS -> Azure -> Salesforce")
+
+    # --- PHASE 1: AWS S3 ---
     s3_client = boto3.client('s3', region_name="us-east-1")
-    
-    # Locate the dynamic bucket created in previous steps
     bucket_name = get_lab_bucket(s3_client)
-    
-    if not bucket_name:
-        print("❌ Aborting: AWS Bucket not found. Please run s3_manager.py first.")
-        return
-
-    # Extract content from the 'confidential_data.txt' file in S3
     cloud_data = read_file_content(s3_client, bucket_name)
     
-    if not cloud_data:
-        print("❌ Aborting: Could not read data from S3.")
-        return
+    if not cloud_data: return
 
-    # --- 2. SALESFORCE SECTION ---
-    # Authenticate using our custom Hybrid REST Handshake
+    # --- PHASE 2: AZURE IDENTITY CHECK ---
+    # In a real scenario, this token would be used to access Azure Blob or SQL.
+    # Here, we validate the script's permission to exist in the architecture.
+    if not get_azure_token(): return
+
+    # --- PHASE 3: SALESFORCE DELIVERY ---
     sf = get_salesforce_connection()
-    
-    if not sf:
-        print("❌ Aborting: Salesforce connection failed.")
-        return
+    if not sf: return
 
     try:
-        print("📝 Creating a record in Salesforce with AWS data...")
-        
-        # Create a 'Case' record to log the cross-cloud synchronization
-        new_case = sf.Case.create({
-            'Subject': 'AWS S3 Cloud Sync - Week 1',
-            'Description': f"Data retrieved from S3: {cloud_data}",
+        sf.Case.create({
+            'Subject': 'Full Triad Sync - Week 1',
+            'Description': f"Validated by Azure AD. Data from AWS: {cloud_data}",
             'Status': 'New',
-            'Origin': 'Web',
-            'Priority': 'High'
+            'Priority': 'Medium'
         })
-        
-        print(f"✅ Success! Case created with ID: {new_case['id']}")
-        print("🏁 Phase 1 Complete: The bridge between AWS and Salesforce is active.")
-
+        print("✅ SUCCESS: All three clouds connected and verified!")
     except Exception as e:
         print(f"❌ Salesforce Error: {e}")
 
 if __name__ == "__main__":
-    run_integration()
+    run_triad_integration()

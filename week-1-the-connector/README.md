@@ -1,27 +1,33 @@
-# Week 1: The Hybrid Cloud Connector (AWS + Salesforce)
+# Week 1: The Full Triad Connector (AWS + Azure + Salesforce)
 
 ## 📌 Overview
-This project demonstrates a cross-cloud integration between **AWS (S3)** and **Salesforce**, orchestrated by a Python-based middleware. The primary goal was to fetch sensitive configuration data from an S3 Bucket and securely push it into Salesforce as a business record (Case).
+This project establishes a secure, cross-cloud orchestration between three major providers. It fetches data from **AWS**, validates the identity via **Azure**, and records the business outcome in **Salesforce**.
 
 ## 🛠️ Tech Stack
 - **Language:** Python 3.10+
-- **Cloud Providers:** AWS (S3), Salesforce (Sales Cloud)
-- **Identity & Security:** OAuth 2.0 (REST Handshake), AWS IAM, Pydantic (Data Validation)
-- **Libraries:** `boto3`, `simple-salesforce`, `requests`, `python-dotenv`
+- **Cloud Providers:** - **AWS (S3):** Data Provider.
+  - **Azure (Entra ID):** Identity & Authentication Provider.
+  - **Salesforce:** Business Logic & CRM Provider.
+- **Libraries:** `boto3`, `msal` (Microsoft Auth), `simple-salesforce`, `requests`, `python-dotenv`
 
 ## 🏗️ Architecture
-The integration follows a "Service-to-Service" pattern:
-1. **AWS S3:** Acts as the configuration provider.
-2. **Python Middleware:** - Authenticates with AWS via IAM.
-   - Performs a custom REST Handshake with Salesforce.
-   - Validates data integrity.
-3. **Salesforce:** Receives the payload via REST API and creates a new `Case` record.
+The integration follows the **Triad Pattern**:
+1. **AWS S3:** Script locates a dynamic bucket and reads configuration data in-memory.
+2. **Azure Entra ID:** Script performs a Service-to-Service authentication using **MSAL** to verify its identity in the Microsoft ecosystem.
+3. **Salesforce:** Once identity and data are verified, a REST Handshake is performed to create a `Case` record.
 
 
 
 ## 🚀 How to Run
-1. Ensure your `.env` file is configured in the root directory.
-2. Activate your virtual environment: `source venv/bin/activate`
-3. Run the orchestrator:
-   ```bash
-   python week-1-the-connector/main.py
+Execute from the project root:
+```bash
+python week-1-the-connector/main.py
+
+
+
+📈 Results
+Multi-cloud authentication managed via a single middleware.
+
+Successfully bypassed Salesforce SOAP restrictions using modern REST OAuth2.
+
+Zero-trust approach: Identity verified by Azure before any Salesforce write operation.
