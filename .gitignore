@@ -1,6 +1,3 @@
-# Secrets & Environment
-.env
-
 # Python
 venv/
 __pycache__/
@@ -8,13 +5,11 @@ __pycache__/
 
 # Node.js
 node_modules/
-npm-debug.log*
 
-# Vite / React (Build files)
+# Secrets (NUNCA SUBIR)
+.env
+
+# Build & System
 dist/
-dist-ssr/
-*.local
-
-# System & IDE
 .DS_Store
 .vscode/
