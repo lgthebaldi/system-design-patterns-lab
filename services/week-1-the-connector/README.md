@@ -55,3 +55,11 @@ You must run the **Backend** and **Frontend** in separate terminals:
 cd frontend && npm run dev
 cd backend && node server.js
 
+
+
+# 🧪 Testing & Health Checks
+Before starting development or running integrations, execute the pre-flight checks:
+
+1. **API Health:** `node tests/test_api_health.js` (Requires Backend running)
+2. **Cloud Connectivity:** `./venv/bin/python3 tests/test_cloud_connectivity.py`
+
