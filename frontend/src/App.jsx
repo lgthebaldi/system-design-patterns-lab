@@ -1,140 +1,127 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react';
+import './App.css'; // Importando o estilo externo (mais limpo)
 
 function App() {
-  const [status, setStatus] = useState("Ready")
-  const [logs, setLogs] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  // Estado inicial tenta pegar o token do navegador (se já tiver logado antes)
+  const [token, setToken] = useState(localStorage.getItem('triad_token'));
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const runWeek1Integration = async () => {
-    setIsLoading(true)
-    setStatus("Running Triad Integration...")
-    setLogs("Initializing connection with Backend...")
+  // 1. O "Pulo do Gato": Captura o Token quando volta do Salesforce
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromUrl = params.get('token');
+
+    if (tokenFromUrl) {
+      console.log("🔑 Security: Token capturado da URL.");
+      localStorage.setItem('triad_token', tokenFromUrl); // Salva no cofre do navegador
+      setToken(tokenFromUrl);
+      
+      // Limpa a URL para o usuário não ver o token gigante
+      window.history.replaceState({}, document.title, "/");
+    }
+  }, []);
+
+  // 2. Ação de Login (Manda pro Backend -> Salesforce)
+  const handleLogin = () => {
+    console.log("🔄 Iniciando fluxo OAuth2...");
+    window.location.href = "http://localhost:3001/auth/login";
+  };
+
+  // 3. Ação de Logout (Rasga o crachá)
+  const handleLogout = () => {
+    console.log("👋 Logout efetuado.");
+    localStorage.removeItem('triad_token');
+    setToken(null);
+    setLogs([]); // Limpa a tela
+  };
+
+  // 4. Ação de Executar (Agora manda o Token junto!)
+  const runIntegration = async () => {
+    setLoading(true);
+    // Limpa logs antigos e avisa que começou
+    setLogs((prev) => ["🚀 Iniciando Pipeline Seguro...", ...prev]);
 
     try {
-      // Calls the Node.js Backend endpoint
-      const response = await fetch('http://localhost:3001/run-week1')
-      const data = await response.json()
+      // AQUI ESTÁ A DIFERENÇA: Header Authorization
+      const response = await fetch('http://localhost:3001/run-week1', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        }
+      });
 
-      if (response.ok) {
-        setStatus("Success")
-        // data.logs contains the 'stdout' from your Python script
-        setLogs(data.logs || "Integration executed successfully. No output returned.")
-      } else {
-        setStatus("Failed")
-        setLogs(`Error Details: ${data.details || 'Unknown Error'}`)
+      // Se o token venceu ou é falso
+      if (response.status === 401 || response.status === 403) {
+        setLogs((prev) => ["❌ Sessão Expirada. Faça login novamente.", ...prev]);
+        handleLogout(); // Chuta o usuário pra fora
+        return;
       }
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setLogs((prev) => [`✅ SUCESSO: ${data.message}`, ...prev]);
+        if(data.logs) setLogs((prev) => [`📜 LOGS DO PYTHON:\n${data.logs}`, ...prev]);
+      } else {
+        setLogs((prev) => [`⚠️ Erro no Servidor: ${data.message}`, ...prev]);
+      }
+
     } catch (error) {
-      setStatus("Connection Error")
-      setLogs("Could not reach the Backend server. Make sure node server.js is running on port 3001.")
+      setLogs((prev) => [`❌ Erro de Rede: ${error.message}`, ...prev]);
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
+    <div className="container">
+      <header className="header">
         <h1>Triad Architecture Portal 2026</h1>
         <p>Control Center for Cross-Cloud Operations (AWS | Azure | Salesforce)</p>
       </header>
-
-      <main style={styles.main}>
-        <section style={styles.card}>
-          <h2>Week 1: The Hybrid Connector</h2>
-          <p style={styles.description}>
-            This module triggers a Python orchestration to fetch config from <strong>AWS S3</strong>, 
-            verify identity via <strong>Azure Entra ID</strong>, and create a record in <strong>Salesforce</strong>.
-          </p>
-
-          <div style={styles.statusBadge}>
-            Status: <span style={{ color: status === "Success" ? "#28a745" : "#007bff" }}>{status}</span>
-          </div>
-
-          <button 
-            onClick={runWeek1Integration} 
-            disabled={isLoading}
-            style={{
-              ...styles.button,
-              backgroundColor: isLoading ? "#ccc" : "#007bff",
-              cursor: isLoading ? "not-allowed" : "pointer"
-            }}
-          >
-            {isLoading ? "Executing..." : "Run Integration"}
+      
+      {/* LÓGICA CONDICIONAL: Mostra Login ou Dashboard */}
+      {!token ? (
+        <div className="login-box">
+          <h2>🔒 Acesso Restrito</h2>
+          <p>Você precisa se autenticar via Salesforce para acessar o controle.</p>
+          <button onClick={handleLogin} className="btn-login">
+            ☁️ Login com Salesforce
           </button>
-        </section>
-
-        <section style={styles.terminalContainer}>
-          <h3>Execution Logs</h3>
-          <div style={styles.terminal}>
-            <pre style={styles.pre}>{logs || "> Waiting for execution..."}</pre>
+        </div>
+      ) : (
+        <div className="dashboard">
+          <div className="toolbar">
+            <span className="badge">🟢 Acesso de Arquiteto Liberado</span>
+            <button onClick={handleLogout} className="btn-logout">Sair</button>
           </div>
-        </section>
-      </main>
+
+          <div className="card">
+            <h2>Week 1: The Hybrid Connector</h2>
+            <p className="description">
+              Módulo de orquestração segura. Busca config no <strong>AWS S3</strong>, 
+              valida via <strong>Azure Entra ID</strong> e cria logs no <strong>Salesforce</strong>.
+            </p>
+            
+            <button onClick={runIntegration} disabled={loading} className="btn-run">
+              {loading ? "⏳ Executando..." : "▶️ Rodar Integração"}
+            </button>
+          </div>
+
+          <div className="terminal-container">
+            <h3>Logs de Execução</h3>
+            <div className="terminal">
+              <pre>
+                {logs.length === 0 ? "> Aguardando comando..." : logs.map((log, i) => <div key={i}>{log}</div>)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
 
-// Simple CSS-in-JS for clean visualization
-const styles = {
-  container: {
-    padding: '20px',
-    maxWidth: '900px',
-    margin: '0 auto',
-    fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
-    backgroundColor: '#f8f9fa',
-    minHeight: '100vh'
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '40px',
-    borderBottom: '2px solid #dee2e6',
-    paddingBottom: '20px'
-  },
-  main: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px'
-  },
-  card: {
-    backgroundColor: '#fff',
-    padding: '25px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-  },
-  description: {
-    color: '#6c757d',
-    lineHeight: '1.5'
-  },
-  statusBadge: {
-    margin: '20px 0',
-    fontSize: '1.1rem',
-    fontWeight: 'bold'
-  },
-  button: {
-    color: 'white',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '5px',
-    fontSize: '1rem',
-    transition: '0.3s'
-  },
-  terminalContainer: {
-    marginTop: '10px'
-  },
-  terminal: {
-    backgroundColor: '#212529',
-    color: '#f8f9fa',
-    padding: '15px',
-    borderRadius: '5px',
-    minHeight: '200px',
-    overflowX: 'auto'
-  },
-  pre: {
-    margin: 0,
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-all',
-    fontSize: '0.9rem'
-  }
-}
-
-export default App
+export default App;
