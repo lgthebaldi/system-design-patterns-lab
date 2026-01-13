@@ -95,3 +95,43 @@ We decided to implement an **Asynchronous Producer-Consumer Architecture** utili
 ## Compliance
 * **Performance:** Maintains low memory footprint (<100MB) under load.
 * **Reliability:** Implements "At-least-once" delivery semantics via Redis.
+
+# ADR 003: Server-Driven UI Engine (Week 3)
+
+## Status
+Accepted
+
+## Context
+In a traditional client-side rendering approach, the UI layout is hardcoded in the Frontend application.
+Business requirements frequently demand minor UI changes (e.g., changing text, reordering sections, toggling features based on flags).
+Currently, every small UI change triggers a full CI/CD pipeline, resulting in slow "Time-to-Market" and "Deployment Fatigue."
+
+## Decision
+We decided to implement a **Server-Driven UI** architecture. The definition of the screen structure is moved from the React code to a **MongoDB** document.
+The Frontend acts as a "Dumb Renderer," recursively mapping JSON objects to pre-defined UI components.
+
+### Key Architectural Choices:
+
+1.  **Data Store:**
+    * **Decision:** Use **MongoDB**.
+    * **Reasoning:** Unlike SQL, MongoDB allows storing complex, deeply nested JSON structures (Component Trees) naturally without rigid schema migrations.
+
+2.  **Rendering Strategy:**
+    * **Decision:** **Recursive Component Pattern** in React.
+    * **Reasoning:** UI structures are hierarchical (A Section contains a Card, which contains a Button). Recursion allows the engine to render infinite levels of nesting without writing specific code for each depth level.
+
+3.  **Component Map:**
+    * **Decision:** Static Dictionary (`type` -> `Component`).
+    * **Reasoning:** Provides security. The backend cannot inject arbitrary code (XSS), it can only request components that explicitly exist in the Frontend's registry.
+
+## Consequences
+* **Positive:**
+    * **Agility:** Marketing/Product teams can theoretically update the UI via a CMS without engineering involvement.
+    * **Consistency:** Enforces the use of a Design System; developers cannot create "custom hacky buttons" easily.
+* **Negative:**
+    * **Complexity:** Building the "Engine" is harder than just building a page.
+    * **Versioning:** Breaking changes in the Component Props can crash older versions of the Frontend (e.g., Mobile Apps that users haven't updated).
+
+## Compliance
+* **Flexibility:** JSON-based Layouts.
+* **Security:** No `eval()` or dangerous code injection; strictly mapped components.

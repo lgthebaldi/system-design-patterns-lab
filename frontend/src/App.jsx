@@ -6,6 +6,8 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './components/Dashboard'; // Your old App.jsx code is here now
 import BatchSync from './components/BatchSync'; // The new Week 2 code
 
+import ConfigDrivenUI from './components/ConfigDrivenUI';
+
 // Navigation Bar Component
 const NavBar = () => (
   <nav style={styles.nav}>
@@ -13,6 +15,7 @@ const NavBar = () => (
     <div style={styles.links}>
       <Link to="/" style={styles.link}>Week 1: Connector</Link>
       <Link to="/batch-sync" style={styles.link}>Week 2: Batch Sync</Link>
+      <Link to="/server-driven" style={styles.link}>Week 3: Config UI</Link>
     </div>
   </nav>
 );
@@ -30,6 +33,9 @@ function App() {
             
             {/* Route for Week 2 */}
             <Route path="/batch-sync" element={<BatchSync />} />
+
+            <Route path="/server-driven" element={<ConfigDrivenUI />} />
+            
           </Routes>
         </div>
       </div>

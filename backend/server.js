@@ -9,6 +9,8 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 // Import Controllers
 const authController = require('./authController');
 const syncController = require('./controllers/syncController'); // <--- NEW: Week 2 Import
+const connectMongo = require('./lib/mongo'); // WEEK 3
+const { getScreenConfig } = require('./controllers/configController'); // WEEK 3
 
 const app = express();
 const PORT = 3001;
@@ -39,6 +41,8 @@ const authenticateToken = (req, res, next) => {
         next(); // User is allowed, proceed to the route
     });
 };
+// --- DATABASE CONNECTION ---
+connectMongo(); // WEEK 3: Connect to MongoDB when server starts
 
 // --- ROUTES ---
 
@@ -76,6 +80,10 @@ app.get('/run-week1', (req, res) => {
 // app.post('/api/sync/start', authenticateToken, syncController.startSync);
 
 app.post('/api/sync/start', syncController.startSync);
+
+// WEEK 3: UI Config Route
+// O frontend call: GET /api/config/home
+app.get('/api/config/:screenName', getScreenConfig);
 
 // --- SERVER START ---
 app.listen(PORT, () => {
