@@ -20,3 +20,6 @@ dist-ssr/
 # System & IDE
 .DS_Store
 .vscode/
+
+# Data files
+*.csv
