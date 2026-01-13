@@ -8,26 +8,56 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Import Controllers
 const authController = require('./authController');
-const syncController = require('./controllers/syncController'); // <--- NEW: Week 2 Import
-const connectMongo = require('./lib/mongo'); // WEEK 3
-const { getScreenConfig } = require('./controllers/configController'); // WEEK 3
+const syncController = require('./controllers/syncController'); // Week 2
+const connectMongo = require('./lib/mongo'); // Week 3
+const { getScreenConfig } = require('./controllers/configController'); // Week 3
+const { createProxyMiddleware } = require('http-proxy-middleware'); // Week 4
 
 const app = express();
 const PORT = 3001;
 
+// --- 1. CONFIGURAÇÃO INICIAL (CORS & PROXY) ---
+
 // Enable CORS so React (port 5173) can talk to Node (port 3001)
 app.use(cors());
-app.use(express.json()); // Essential to parse JSON bodies (req.body)
 
-// 1. Load Public Key (To verify the Badge/Token)
-const publicKey = fs.readFileSync(path.join(__dirname, 'public.key'), 'utf8');
+// ⚠️ WEEK 4 FIX: O Proxy DEVE vir ANTES do express.json()
+// Route traffic from /api/finance/* -> Python Service (Port 8000)
+app.use('/api/finance', createProxyMiddleware({
+    target: 'http://localhost:8000', // Python Microservice URL
+    changeOrigin: true,
+    pathRewrite: {
+        '^/api/finance': '', // Removes '/api/finance' before sending to Python
+    },
+    onProxyReq: (proxyReq, req, res) => {
+        console.log(`🔀 Proxying request to Financial Service: ${req.url}`);
+    }
+}));
 
-// 2. Security Middleware (The Guard)
+// Agora sim podemos ler JSON para as outras rotas (Node)
+app.use(express.json()); 
+
+// 2. Load Public Key (To verify the Badge/Token)
+// (Certifique-se que o arquivo public.key existe na pasta backend)
+let publicKey;
+try {
+    publicKey = fs.readFileSync(path.join(__dirname, 'public.key'), 'utf8');
+} catch (error) {
+    console.warn("⚠️ Warning: public.key not found. Authentication might fail.");
+}
+
+// 3. Security Middleware (The Guard)
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Extracts "Bearer <TOKEN>"
 
+    // BYPASS TEMPORÁRIO PARA TESTES DA SEMANA 4
+    // Se quiser ligar a segurança de novo, remova este 'if' abaixo
     if (!token) {
+        // console.warn("⚠️ [Security] No token provided (Bypassed for Dev).");
+        // return next(); 
+        
+        // CÓDIGO ORIGINAL (MANTIDO):
         console.warn("⚠️ [Security] Access attempt without token blocked.");
         return res.status(401).json({ message: "Access Denied: No token provided." });
     }
@@ -41,6 +71,7 @@ const authenticateToken = (req, res, next) => {
         next(); // User is allowed, proceed to the route
     });
 };
+
 // --- DATABASE CONNECTION ---
 connectMongo(); // WEEK 3: Connect to MongoDB when server starts
 
@@ -78,7 +109,6 @@ app.get('/run-week1', (req, res) => {
 // Protected Route: Starts the async job queue
 // We use 'authenticateToken' so we know WHO started the sync (req.user)
 // app.post('/api/sync/start', authenticateToken, syncController.startSync);
-
 app.post('/api/sync/start', syncController.startSync);
 
 // WEEK 3: UI Config Route
@@ -91,4 +121,5 @@ app.listen(PORT, () => {
     console.log(`📂 Monitoring scripts in: ../services/`);
     console.log(`🚀 Week 1 Route: GET /run-week1`);
     console.log(`🚀 Week 2 Route: POST /api/sync/start`);
+    console.log(`👉 Week 4 Gateway: /api/finance -> Port 8000`);
 });

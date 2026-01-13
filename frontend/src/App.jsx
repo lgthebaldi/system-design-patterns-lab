@@ -7,7 +7,7 @@ import Dashboard from './components/Dashboard'; // Your old App.jsx code is here
 import BatchSync from './components/BatchSync'; // The new Week 2 code
 
 import ConfigDrivenUI from './components/ConfigDrivenUI';
-
+import FinancialDashboard from './components/FinancialDashboard';
 // Navigation Bar Component
 const NavBar = () => (
   <nav style={styles.nav}>
@@ -16,6 +16,7 @@ const NavBar = () => (
       <Link to="/" style={styles.link}>Week 1: Connector</Link>
       <Link to="/batch-sync" style={styles.link}>Week 2: Batch Sync</Link>
       <Link to="/server-driven" style={styles.link}>Week 3: Config UI</Link>
+      <Link to="/finance" style={styles.link}>Week 4: FinService</Link>
     </div>
   </nav>
 );
@@ -35,7 +36,9 @@ function App() {
             <Route path="/batch-sync" element={<BatchSync />} />
 
             <Route path="/server-driven" element={<ConfigDrivenUI />} />
-            
+
+            <Route path="/finance" element={<FinancialDashboard />} />
+
           </Routes>
         </div>
       </div>

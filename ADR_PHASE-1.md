@@ -135,3 +135,32 @@ The Frontend acts as a "Dumb Renderer," recursively mapping JSON objects to pre-
 ## Compliance
 * **Flexibility:** JSON-based Layouts.
 * **Security:** No `eval()` or dangerous code injection; strictly mapped components.
+
+
+# ADR 004: Polyglot Architecture with API Gateway (Week 4)
+
+## Status
+Accepted
+
+## Context
+Our application requires complex financial calculations. Implementing these in Node.js is possible but inefficient compared to Python's ecosystem (Pandas, NumPy, native math handling).
+However, exposing multiple APIs (Node on 3001, Python on 8000) to the Frontend creates "CORS Hell," security risks, and tight coupling.
+
+## Decision
+We decided to implement the **API Gateway Pattern** (specifically, the "Backends for Frontends" variation).
+1.  **Node.js** acts as the single public entry point (Gateway).
+2.  **Python (FastAPI)** runs as a private microservice.
+3.  We use `http-proxy-middleware` in Express to transparently route requests from `/api/finance` to the Python instance.
+
+## Consequences
+* **Positive:**
+    * **Decoupling:** We can rewrite the finance service in Go or Rust later without changing the Frontend or the Gateway URL.
+    * **Simplicity:** The Frontend client remains simple (one base URL).
+    * **Performance:** CPU-intensive tasks are offloaded from the Node.js Event Loop.
+* **Negative:**
+    * **Operational Overhead:** We now have two runtimes to manage (Node + Python) and monitor.
+    * **Latency:** There is a small network hop overhead between Node and Python (negligible for localhost, but must be monitored in cloud).
+
+## Compliance
+* **Port 3001:** Public Gateway.
+* **Port 8000:** Private Financial Service.
