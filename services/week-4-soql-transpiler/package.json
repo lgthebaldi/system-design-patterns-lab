@@ -1,0 +1,13 @@
+{
+  "name": "week-4-soql-transpiler",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "ts-node-esm index.ts"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.x"
+  }
+}
