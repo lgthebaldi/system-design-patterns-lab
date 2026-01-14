@@ -1,83 +1,31 @@
-# 🧩 Week 3: The Config Engine (Server-Driven UI)
+# ⚙️ Week 3: Config Engine (Server-Driven UI)
 
-> **Core Concept:** Decoupling the UI structure from the Frontend code. The Backend (MongoDB) dictates "WHAT" to render, and React only knows "HOW" to render.
+> **Core Concept:** The Backend (MongoDB) dictates the screen structure and Business Rules, allowing UI updates and logic changes without redeploying the Frontend.
 
 ## 📋 Overview
-
-In traditional development, changing a button color or adding a section requires a code change, a build, and a deployment. 
-In **Server-Driven UI**, the application layout is fetched as a JSON object from the API at runtime. This allows for:
-* **Instant Updates:** Change the UI without app store updates or deployments.
-* **A/B Testing:** Serve different layouts to different users easily.
-* **Personalization:** Show specific sections based on User Role.
-
----
+This service implements a **Metadata-Driven Architecture**. Instead of hardcoding forms and dashboards, the React Frontend acts as a "dumb" renderer that interprets a recursive JSON tree provided by the Node.js API.
 
 ## 🏗️ Architecture
+- **Schema-First:** We use a strict Mongoose Schema to validate the UI components before they reach the client.
+- **Recursive Rendering:** The `RenderEngine` component uses a self-calling pattern to render nested structures (e.g., Sections inside Sections).
+- **Rules Engine:** Business logic (like `min: 18` for age) is sent as metadata, allowing the UI to adapt its validation dynamically.
 
-The solution relies on **Recursion**. Since a UI component (like a Section) can contain other components, the Rendering Engine must be able to call itself.
+## 🚀 How to Run
+1. **Seed the Database:**
+   ```bash
+   node seed.js
+Verify the API: Access http://localhost:3001/api/config/home to see the recursive JSON.
 
-```mermaid
-graph TD
-    DB[(MongoDB)] -->|JSON Layout| API[Node.js API]
-    API -->|GET /config/home| React[React Frontend]
-    
-    subgraph "Recursive Render Engine"
-        React -->|Read Type| Mapper{Component Map}
-        Mapper -->|'button'| Btn[Render Button]
-        Mapper -->|'section'| Sect[Render Section]
-        Sect -->|Has Children?| Mapper
-    end
-JSON Structure Example
-The database stores the UI definition like this:
-
-JSON
-
-{
-  "screenName": "home",
-  "layout": [
-    {
-      "type": "section",
-      "props": { "title": "Overview" },
-      "children": [
-        { "type": "card", "props": { "title": "Revenue", "value": "$50k" } }
-      ]
-    }
-  ]
-}
-🛠️ Setup & Installation
-1. Prerequisites
-Ensure MongoDB is running:
-
-Bash
-
-docker start mongo-triad
-2. Install Dependencies
-Navigate to this folder:
-
-Bash
-
-cd services/week-3-config-engine
-npm install
-3. Database Seeding
-Since we don't have an Admin Panel yet, we use a script to inject the JSON layout into MongoDB:
-
-Bash
-
-node seed.js
-Output: ✅ Database seeded with 'home' screen config!
-
-🚀 Usage
-Start the Backend (npm run dev in /backend).
-
-Start the Frontend (npm run dev in /frontend).
-
-Navigate to /server-driven.
-
-To change the UI, simply edit seed.js, change the JSON structure, run node seed.js again, and refresh the browser. No Frontend code changes required.
-
-📦 Tech Stack
-Database: MongoDB (Flexible Schema for nested JSON).
-
-Backend: Node.js + Mongoose.
+🛠️ Tech Stack
+Backend: Node.js, Mongoose, MongoDB.
 
 Frontend: React (Recursive Components).
+
+Validation: Server-side defined rules via JSON.
+
+🎯 Validation Check
+[x] Recursive rendering of section components.
+
+[x] Dynamic display of Cards, Alerts, and Inputs.
+
+[x] Business rules injected via validation property in the JSON.

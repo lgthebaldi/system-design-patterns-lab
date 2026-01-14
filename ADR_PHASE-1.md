@@ -96,45 +96,31 @@ We decided to implement an **Asynchronous Producer-Consumer Architecture** utili
 * **Performance:** Maintains low memory footprint (<100MB) under load.
 * **Reliability:** Implements "At-least-once" delivery semantics via Redis.
 
-# ADR 003: Server-Driven UI Engine (Week 3)
+# ADR 003: Implementation of Server-Driven UI (SDUI)
 
 ## Status
 Accepted
 
 ## Context
-In a traditional client-side rendering approach, the UI layout is hardcoded in the Frontend application.
-Business requirements frequently demand minor UI changes (e.g., changing text, reordering sections, toggling features based on flags).
-Currently, every small UI change triggers a full CI/CD pipeline, resulting in slow "Time-to-Market" and "Deployment Fatigue."
+We needed a way to update the application's layout and business validation rules without requiring a new build/deploy of the Frontend or waiting for App Store approvals. The system must support complex, nested layouts.
 
 ## Decision
-We decided to implement a **Server-Driven UI** architecture. The definition of the screen structure is moved from the React code to a **MongoDB** document.
-The Frontend acts as a "Dumb Renderer," recursively mapping JSON objects to pre-defined UI components.
-
-### Key Architectural Choices:
-
-1.  **Data Store:**
-    * **Decision:** Use **MongoDB**.
-    * **Reasoning:** Unlike SQL, MongoDB allows storing complex, deeply nested JSON structures (Component Trees) naturally without rigid schema migrations.
-
-2.  **Rendering Strategy:**
-    * **Decision:** **Recursive Component Pattern** in React.
-    * **Reasoning:** UI structures are hierarchical (A Section contains a Card, which contains a Button). Recursion allows the engine to render infinite levels of nesting without writing specific code for each depth level.
-
-3.  **Component Map:**
-    * **Decision:** Static Dictionary (`type` -> `Component`).
-    * **Reasoning:** Provides security. The backend cannot inject arbitrary code (XSS), it can only request components that explicitly exist in the Frontend's registry.
+We implemented a **Server-Driven UI (SDUI)** pattern using:
+1.  **Recursive Component Rendering:** A `RenderEngine` in React that maps JSON types to components and handles nested `children`.
+2.  **Metadata-Defined Logic:** Validation rules (Required, Min/Max) are stored in MongoDB and interpreted by the Frontend components at runtime.
+3.  **Strict Schema:** Although MongoDB is schemaless, we enforced a strict structure in the Application Layer (Mongoose) to prevent UI crashes.
 
 ## Consequences
 * **Positive:**
-    * **Agility:** Marketing/Product teams can theoretically update the UI via a CMS without engineering involvement.
-    * **Consistency:** Enforces the use of a Design System; developers cannot create "custom hacky buttons" easily.
+    * **Agility:** Changing the `seed.js` or a database entry updates the production UI instantly.
+    * **Consistency:** The same JSON structure can theoretically drive Mobile (React Native) and Web (React).
 * **Negative:**
-    * **Complexity:** Building the "Engine" is harder than just building a page.
-    * **Versioning:** Breaking changes in the Component Props can crash older versions of the Frontend (e.g., Mobile Apps that users haven't updated).
+    * **Complexity:** Debugging requires checking the data flow from DB -> API -> Renderer.
+    * **Payload Size:** Large, complex screens result in larger JSON payloads.
 
 ## Compliance
-* **Flexibility:** JSON-based Layouts.
-* **Security:** No `eval()` or dangerous code injection; strictly mapped components.
+* **Schema:** Must include `type`, `props`, and `children` for every node.
+* **Validation:** All inputs must support the `validation` metadata object.
 
 
 # ADR 004: Polyglot Architecture with API Gateway (Week 4)

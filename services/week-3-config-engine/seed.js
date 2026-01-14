@@ -1,58 +1,84 @@
-// services/week-3-config-engine/seed.js
 const mongoose = require('mongoose');
 
-// Schema simples para o seed (cópia simplificada do backend)
-const UiConfigSchema = new mongoose.Schema({
-    screenName: String,
-    title: String,
-    layout: Array,
-    version: Number
-});
-const UiConfig = mongoose.model('UiConfig', UiConfigSchema);
-
 async function seed() {
-    await mongoose.connect('mongodb://localhost:27017/triad_system');
-    console.log("🔌 Connected to Mongo for Seeding...");
+    console.log("🔌 Iniciando conexão forçada...");
 
-    // 1. Limpa configurações antigas
-    await UiConfig.deleteMany({});
+    try {
+        // 1. Conectar primeiro
+        await mongoose.connect('mongodb://127.0.0.1:27017/triad_system', {
+            serverSelectionTimeoutMS: 5000
+        });
+        console.log("✅ Conectado ao MongoDB!");
 
-    // 2. Define a tela 'home' (Server-Driven UI)
-    const homeScreen = {
-        screenName: "home",
-        title: "Dynamic Dashboard V1",
-        version: 1,
-        layout: [
-            {
-                type: "alert",
-                props: { message: "Welcome to Server-Driven UI! This alert implies a JSON.", variant: "info" }
-            },
-            {
-                type: "section",
-                props: { title: "Metrics Overview" },
-                children: [
-                    {
-                        type: "card",
-                        props: { title: "Total Users", value: "1,204", icon: "users" }
-                    },
-                    {
-                        type: "card",
-                        props: { title: "Revenue", value: "$45,200", icon: "dollar" }
-                    }
-                ]
-            },
-            {
-                type: "button",
-                props: { label: "Refresh Data", action: "refresh_api", color: "primary" }
-            }
-        ]
-    };
+        // 2. Definir o Schema e o Model EXATAMENTE aqui dentro (evita buffering)
+        const UiConfigSchema = new mongoose.Schema({
+            screenName: { type: String, required: true, unique: true },
+            title: String,
+            layout: [{
+                type: { type: String, required: true },
+                props: mongoose.Schema.Types.Mixed,
+                children: [mongoose.Schema.Types.Mixed],
+                validation: {
+                    required: Boolean,
+                    min: Number,
+                    errorMessage: String
+                }
+            }]
+        });
 
-    // 3. Salva no Banco
-    await UiConfig.create(homeScreen);
-    console.log("✅ Database seeded with 'home' screen config!");
-    
-    mongoose.disconnect();
+        // Se o modelo já existir, deleta para redefinir
+        if (mongoose.models.UiConfig) {
+            delete mongoose.models.UiConfig;
+        }
+        const UiConfig = mongoose.model('UiConfig', UiConfigSchema);
+
+        // 3. Executar operações
+        console.log("🧹 Limpando dados antigos...");
+        await UiConfig.deleteMany({});
+        console.log("🗑️ Coleção limpa.");
+
+        console.log("🚀 Injetando Layout Masterplan...");
+        await UiConfig.create({
+            screenName: "home",
+            title: "Masterplan Dashboard",
+            layout: [
+                {
+                    type: "alert",
+                    props: { message: "Server-Driven UI Engine Active", variant: "info" },
+                    children: []
+                },
+                {
+                    type: "section",
+                    props: { title: "Metrics Overview" },
+                    children: [
+                        { type: "card", props: { title: "Total Users", value: "1,204", icon: "users" } },
+                        { type: "card", props: { title: "Revenue", value: "$45,200", icon: "dollar" } }
+                    ]
+                },
+                {
+                    type: "section",
+                    props: { title: "Business Rules" },
+                    children: [
+                        {
+                            type: "input",
+                            props: { label: "Verification Age" },
+                            validation: { required: true, min: 18, errorMessage: "Rule: Must be 18+ for access." }
+                        },
+                        { type: "button", props: { label: "Validate Data", color: "primary" } }
+                    ]
+                }
+            ]
+        });
+
+        console.log("✨ SUCESSO ABSOLUTO: Week 3 Seeded!");
+
+    } catch (err) {
+        console.error("❌ ERRO NO SEED:", err.message);
+    } finally {
+        await mongoose.connection.close();
+        console.log("🔌 Conexão encerrada.");
+        process.exit();
+    }
 }
 
 seed();
