@@ -1,8 +1,9 @@
 // services/week-4-soql-transpiler/parser.ts
 import { Token, TokenType, SelectAST } from './types';
-import { Lexer } from './lexer.js';
-import { Parser } from './parser.js';
-import { Transpiler } from './transpiler.js';
+import { Lexer } from './lexer';
+import { Parser } from './parser';
+import { Transpiler } from './transpiler';
+
 export class Parser {
     private tokens: Token[];
     private pos: number = 0;

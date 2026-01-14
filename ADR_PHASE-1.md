@@ -123,17 +123,20 @@ We implemented a **Server-Driven UI (SDUI)** pattern using:
 * **Validation:** All inputs must support the `validation` metadata object.
 
 
-## ADR 004: SOQL Transpiler Implementation
+## ADR 004: SQL to SOQL Transpiler Implementation
 
 ### Status
 Accepted
 
 ### Context
-Salesforce does not support `SELECT *` and uses custom naming conventions (`__c`). We need a reliable way to transform generic SQL queries into valid SOQL.
+Integrating with Salesforce requires queries to follow SOQL constraints (no `SELECT *`, custom field mapping). Hardcoding these queries or using simple String Replaces is error-prone and hard to maintain for complex scenarios.
 
 ### Decision
-We implemented a custom transpiler using a **Recursive Descent Parser** pattern. Instead of using Regex (which is fragile for nested queries), we built a proper Lexer and AST.
+We decided to implement a custom **Transpiler** using a **Recursive Descent Parser**. 
+- **Lexer/Parser Pattern:** Ensures that we can scale the language support (like adding `WHERE` or `JOIN` clauses) without breaking existing logic.
+- **AST Mapping:** Decouples the input language (SQL) from the output language (SOQL), allowing us to swap mapping rules easily.
+- **Backend Integration:** The engine is exposed via a REST API, allowing any part of the Triad System to request query translations.
 
 ### Consequences
-* **Positive:** High reliability and easy to extend for `WHERE` clauses and `JOINs`.
-* **Negative:** Requires manual mapping of Salesforce objects in the `transpiler.ts` file.
+* **Positive:** High reliability in query generation; centralized business rules for Salesforce objects; professional-grade handling of string-to-code transformations.
+* **Negative:** Increased initial complexity compared to RegEx-based solutions.

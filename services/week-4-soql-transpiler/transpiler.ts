@@ -1,8 +1,8 @@
 // services/week-4-soql-transpiler/transpiler.ts
 import { SelectAST } from './types';
-import { Lexer } from './lexer.js';
-import { Parser } from './parser.js';
-import { Transpiler } from './transpiler.js';
+import { Lexer } from './lexer';
+import { Parser } from './parser';
+import { Transpiler } from './transpiler';
 
 // Mapa de Tradução (Rules Engine do Compilador)
 const SALESFORCE_MAPPING: Record<string, { table: string, fields: string[] }> = {

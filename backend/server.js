@@ -1,125 +1,114 @@
+// backend/server.js
 const express = require('express');
 const { exec } = require('child_process');
 const cors = require('cors');
 const path = require('path');
-const jwt = require('jsonwebtoken'); // Needed for validation
-const fs = require('fs');            // Needed to read keys
+const jwt = require('jsonwebtoken');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+// 🔥 CONFIGURAÇÃO SÊNIOR: Força o ts-node a ignorar o "type: module" e tratar como CommonJS
+require('ts-node').register({
+    transpileOnly: true,
+    compilerOptions: {
+        module: "CommonJS",
+        target: "ESNext",
+        esModuleInterop: true
+    }
+});
 
 // Import Controllers
 const authController = require('./authController');
-const syncController = require('./controllers/syncController'); // Week 2
-const connectMongo = require('./lib/mongo'); // Week 3
-const { getScreenConfig } = require('./controllers/configController'); // Week 3
-const { createProxyMiddleware } = require('http-proxy-middleware'); // Week 4
+const syncController = require('./controllers/syncController'); 
+const connectMongo = require('./lib/mongo'); 
+const { getScreenConfig } = require('./controllers/configController'); 
 
 const app = express();
 const PORT = 3001;
 
-// --- 1. CONFIGURAÇÃO INICIAL (CORS & PROXY) ---
-
-// Enable CORS so React (port 5173) can talk to Node (port 3001)
+// --- 1. CONFIGURAÇÃO ---
 app.use(cors());
-
-// ⚠️ WEEK 4 FIX: O Proxy DEVE vir ANTES do express.json()
-// Route traffic from /api/finance/* -> Python Service (Port 8000)
-app.use('/api/finance', createProxyMiddleware({
-    target: 'http://localhost:8000', // Python Microservice URL
-    changeOrigin: true,
-    pathRewrite: {
-        '^/api/finance': '', // Removes '/api/finance' before sending to Python
-    },
-    onProxyReq: (proxyReq, req, res) => {
-        console.log(`🔀 Proxying request to Financial Service: ${req.url}`);
-    }
-}));
-
-// Agora sim podemos ler JSON para as outras rotas (Node)
 app.use(express.json()); 
 
-// 2. Load Public Key (To verify the Badge/Token)
-// (Certifique-se que o arquivo public.key existe na pasta backend)
+// --- 2. SECURITY MIDDLEWARE ---
 let publicKey;
 try {
     publicKey = fs.readFileSync(path.join(__dirname, 'public.key'), 'utf8');
 } catch (error) {
-    console.warn("⚠️ Warning: public.key not found. Authentication might fail.");
+    console.warn("⚠️ Warning: public.key not found.");
 }
 
-// 3. Security Middleware (The Guard)
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Extracts "Bearer <TOKEN>"
+    const token = authHeader && authHeader.split(' ')[1];
 
-    // BYPASS TEMPORÁRIO PARA TESTES DA SEMANA 4
-    // Se quiser ligar a segurança de novo, remova este 'if' abaixo
     if (!token) {
-        // console.warn("⚠️ [Security] No token provided (Bypassed for Dev).");
-        // return next(); 
-        
-        // CÓDIGO ORIGINAL (MANTIDO):
         console.warn("⚠️ [Security] Access attempt without token blocked.");
-        return res.status(401).json({ message: "Access Denied: No token provided." });
+        return res.status(401).json({ message: "Access Denied." });
     }
 
     jwt.verify(token, publicKey, { algorithms: ['RS256'] }, (err, user) => {
-        if (err) {
-            console.error("❌ [Security] Invalid or Expired Token.");
-            return res.status(403).json({ message: "Forbidden: Invalid or Expired Credentials." });
-        }
-        req.user = user; // Attaches user context to the request
-        next(); // User is allowed, proceed to the route
+        if (err) return res.status(403).json({ message: "Invalid Token." });
+        req.user = user;
+        next();
     });
 };
 
 // --- DATABASE CONNECTION ---
-connectMongo(); // WEEK 3: Connect to MongoDB when server starts
+connectMongo();
 
 // --- ROUTES ---
 
-// Auth Routes (Public)
+// Auth (Public)
 app.get('/auth/login', authController.login);
 app.get('/auth/callback', authController.callback);
 
-// --- WEEK 1: The Connector (Python Integration) ---
-// Protected Route: Runs the Python automation script
+// WEEK 1: Python Handshake
 app.get('/run-week1', (req, res) => {
-    console.log("⚡ Received request to run Week 1 Integration");
-
     const pythonPath = path.join(__dirname, '../venv/bin/python3');
     const scriptPath = path.join(__dirname, '../services/week-1-the-connector/main.py');
-
     exec(`${pythonPath} ${scriptPath}`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`❌ Execution Error: ${error.message}`);
-            return res.status(500).json({ 
-                message: "Python Script Execution Failed", 
-                details: error.message,
-                logs: stderr 
-            });
-        }
-        if (stderr) console.warn(`⚠️ Script Stderr: ${stderr}`);
-
-        console.log("✅ Script executed successfully");
-        res.json({ message: "Triad Handshake Successful", logs: stdout });
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ message: "Handshake Successful", logs: stdout });
     });
 });
 
-// --- WEEK 2: Batch Sync Processor (High Performance) ---
-// Protected Route: Starts the async job queue
-// We use 'authenticateToken' so we know WHO started the sync (req.user)
-// app.post('/api/sync/start', authenticateToken, syncController.startSync);
+// WEEK 2: Batch Sync
 app.post('/api/sync/start', syncController.startSync);
 
-// WEEK 3: UI Config Route
-// O frontend call: GET /api/config/home
+// WEEK 3: UI Config
 app.get('/api/config/:screenName', getScreenConfig);
+
+// --- WEEK 4: SOQL TRANSPILER (INTEGRAÇÃO VIA REQUIRE) ---
+app.post('/api/transpile', (req, res) => {
+    try {
+        const { sql } = req.body;
+        if (!sql) return res.status(400).json({ error: "No SQL query provided" });
+
+        // Agora o require funciona porque removemos o "type: module" e configuramos o ts-node
+        const { Lexer } = require('../services/week-4-soql-transpiler/lexer.ts');
+        const { Parser } = require('../services/week-4-soql-transpiler/parser.ts');
+        const { Transpiler } = require('../services/week-4-soql-transpiler/transpiler.ts');
+
+        // Fluxo do Compilador
+        const tokens = new Lexer(sql).tokenize();
+        const parser = new Parser(tokens);
+        const ast = parser.parse();
+        const transpiler = new Transpiler();
+        const soql = transpiler.transpile(ast);
+
+        console.log(`✨ Transpiled: [${sql}] -> [${soql}]`);
+        res.json({ success: true, soql });
+    } catch (error) {
+        console.error("❌ Transpiler Error:", error.message);
+        res.status(400).json({ success: false, error: error.message });
+    }
+});
 
 // --- SERVER START ---
 app.listen(PORT, () => {
-    console.log(`🌐 Backend Orchestrator running at http://localhost:${PORT}`);
-    console.log(`📂 Monitoring scripts in: ../services/`);
-    console.log(`🚀 Week 1 Route: GET /run-week1`);
-    console.log(`🚀 Week 2 Route: POST /api/sync/start`);
-    console.log(`👉 Week 4 Gateway: /api/finance -> Port 8000`);
+    console.log(`\n🚀 ==========================================`);
+    console.log(`🌐 ORCHESTRATOR ACTIVE AT: http://localhost:${PORT}`);
+    console.log(`✅ WEEK 4: SOQL Transpiler Ready`);
+    console.log(`============================================\n`);
 });

@@ -1,7 +1,7 @@
 // services/week-4-soql-transpiler/index.ts
-import { Lexer } from './lexer.js';
-import { Parser } from './parser.js';
-import { Transpiler } from './transpiler.js';
+import { Lexer } from './lexer';
+import { Parser } from './parser';
+import { Transpiler } from './transpiler';
 
 const sqlQueries = [
     "SELECT * FROM User",
