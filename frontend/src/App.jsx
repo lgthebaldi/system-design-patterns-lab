@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './components/Dashboard'; 
 import BatchSync from './components/BatchSync'; 
 import ConfigDrivenUI from './components/ConfigDrivenUI';
-import SoqlPlayground from './components/SoqlPlayground'; // Importação do componente real da Semana 4
+import SoqlPlayground from './components/SoqlPlayground';
 
 // Navigation Bar Component
 const NavBar = () => (
@@ -16,8 +16,9 @@ const NavBar = () => (
       <Link to="/" style={styles.link}>Week 1: Connector</Link>
       <Link to="/batch-sync" style={styles.link}>Week 2: Batch Sync</Link>
       <Link to="/server-driven" style={styles.link}>Week 3: Config UI</Link>
-      {/* ATUALIZADO: Semana 4 com o nome correto */}
-      <Link to="/soql-transpiler" style={styles.activeLink}>Week 4: SOQL Transpiler</Link>
+      <Link to="/soql-transpiler" style={styles.link}>Week 4: SOQL Transpiler</Link>
+      {/* ADDED: Week 5 Secure Vault Link */}
+      <Link to="/secure-vault" style={styles.activeLink}>Week 5: Secure Vault</Link>
     </div>
   </nav>
 );
@@ -30,17 +31,17 @@ function App() {
         
         <div style={styles.content}>
           <Routes>
-            {/* Route for Week 1 (Default Home) */}
             <Route path="/" element={<Dashboard />} />
-            
-            {/* Route for Week 2 */}
             <Route path="/batch-sync" element={<BatchSync />} />
 
-            {/* Route for Week 3 */}
-            <Route path="/server-driven" element={<ConfigDrivenUI />} />
+            {/* Week 3 remains as home config */}
+            <Route path="/server-driven" element={<ConfigDrivenUI screenName="home" />} />
 
-            {/* ATUALIZADO: Rota para o Transpiler real da Semana 4 */}
+            {/* Week 4 */}
             <Route path="/soql-transpiler" element={<SoqlPlayground />} />
+
+            {/* ADDED: Week 5 using the ConfigDrivenUI engine with 'vault' metadata */}
+            <Route path="/secure-vault" element={<ConfigDrivenUI screenName="vault" />} />
           </Routes>
         </div>
       </div>
@@ -61,8 +62,8 @@ const styles = {
   brand: { margin: 0, fontSize: '1.2rem' },
   links: { display: 'flex', gap: '20px' },
   link: { color: '#bdc3c7', textDecoration: 'none', fontWeight: 'bold' },
-  // Estilo para destacar a entrega atual
-  activeLink: { color: '#2ecc71', textDecoration: 'none', fontWeight: 'bold' },
+  // Styled to highlight the latest delivery
+  activeLink: { color: '#f1c40f', textDecoration: 'none', fontWeight: 'bold' }, 
   content: { padding: '20px' }
 };
 

@@ -7,7 +7,11 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-// 🔥 CONFIGURAÇÃO SÊNIOR: Força o ts-node a ignorar o "type: module" e tratar como CommonJS
+/**
+ * SENIOR CONFIGURATION:
+ * Force ts-node to ignore "type: module" and treat files as CommonJS 
+ * to maintain compatibility with the legacy backend structure.
+ */
 require('ts-node').register({
     transpileOnly: true,
     compilerOptions: {
@@ -22,20 +26,21 @@ const authController = require('./authController');
 const syncController = require('./controllers/syncController'); 
 const connectMongo = require('./lib/mongo'); 
 const { getScreenConfig } = require('./controllers/configController'); 
+const vaultController = require('./controllers/vaultController'); // WEEK 5 Integration
 
 const app = express();
 const PORT = 3001;
 
-// --- 1. CONFIGURAÇÃO ---
+// --- 1. MIDDLEWARE CONFIGURATION ---
 app.use(cors());
 app.use(express.json()); 
 
-// --- 2. SECURITY MIDDLEWARE ---
+// --- 2. SECURITY MIDDLEWARE (RSA-256) ---
 let publicKey;
 try {
     publicKey = fs.readFileSync(path.join(__dirname, 'public.key'), 'utf8');
 } catch (error) {
-    console.warn("⚠️ Warning: public.key not found.");
+    console.warn("⚠️ Warning: public.key not found. Security middleware might fail.");
 }
 
 const authenticateToken = (req, res, next) => {
@@ -63,7 +68,7 @@ connectMongo();
 app.get('/auth/login', authController.login);
 app.get('/auth/callback', authController.callback);
 
-// WEEK 1: Python Handshake
+// WEEK 1: Python Handshake (Legacy Connector)
 app.get('/run-week1', (req, res) => {
     const pythonPath = path.join(__dirname, '../venv/bin/python3');
     const scriptPath = path.join(__dirname, '../services/week-1-the-connector/main.py');
@@ -73,24 +78,24 @@ app.get('/run-week1', (req, res) => {
     });
 });
 
-// WEEK 2: Batch Sync
+// WEEK 2: Batch Sync Processing
 app.post('/api/sync/start', syncController.startSync);
 
-// WEEK 3: UI Config
+// WEEK 3: Config-Driven UI (Metadata Engine)
 app.get('/api/config/:screenName', getScreenConfig);
 
-// --- WEEK 4: SOQL TRANSPILER (INTEGRAÇÃO VIA REQUIRE) ---
+// WEEK 4: SOQL TRANSPILER (Compiler Integration)
 app.post('/api/transpile', (req, res) => {
     try {
         const { sql } = req.body;
         if (!sql) return res.status(400).json({ error: "No SQL query provided" });
 
-        // Agora o require funciona porque removemos o "type: module" e configuramos o ts-node
+        // Dynamic require enabled by ts-node/register
         const { Lexer } = require('../services/week-4-soql-transpiler/lexer.ts');
         const { Parser } = require('../services/week-4-soql-transpiler/parser.ts');
         const { Transpiler } = require('../services/week-4-soql-transpiler/transpiler.ts');
 
-        // Fluxo do Compilador
+        // Compiler Pipeline: Tokenize -> Parse (AST) -> Generate
         const tokens = new Lexer(sql).tokenize();
         const parser = new Parser(tokens);
         const ast = parser.parse();
@@ -105,10 +110,22 @@ app.post('/api/transpile', (req, res) => {
     }
 });
 
+// --- WEEK 5: SECURE VAULT (ENVELOPE ENCRYPTION) ---
+/**
+ * Vault endpoints to handle encrypted secrets using AES-256-GCM
+ */
+// Store an encrypted secret envelope
+app.post('/api/vault/secrets', vaultController.storeSecret);
+// Decrypt and retrieve a secret by its service name
+app.get('/api/vault/secrets/:serviceName', vaultController.getSecret);
+
 // --- SERVER START ---
 app.listen(PORT, () => {
     console.log(`\n🚀 ==========================================`);
     console.log(`🌐 ORCHESTRATOR ACTIVE AT: http://localhost:${PORT}`);
-    console.log(`✅ WEEK 4: SOQL Transpiler Ready`);
+    console.log(`✅ WEEK 1-2: Handshake & Sync Engine Ready`);
+    console.log(`✅ WEEK 3: UI Config Engine Ready`);
+    console.log(`✅ WEEK 4: SOQL Transpiler (TS) Ready`);
+    console.log(`✅ WEEK 5: Secure Vault (AES-GCM) Integrated`);
     console.log(`============================================\n`);
 });

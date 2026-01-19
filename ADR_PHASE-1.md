@@ -140,3 +140,27 @@ We decided to implement a custom **Transpiler** using a **Recursive Descent Pars
 ### Consequences
 * **Positive:** High reliability in query generation; centralized business rules for Salesforce objects; professional-grade handling of string-to-code transformations.
 * **Negative:** Increased initial complexity compared to RegEx-based solutions.
+
+
+## 5. Security Strategy: Envelope Encryption (Week 5)
+
+### Context
+Storing third-party tokens (Salesforce, AWS) in plain text poses a critical security risk. A single database leak would expose all client credentials.
+
+### Decision
+We implemented a **Two-Tier Key Hierarchy**:
+1. **Master Key (MK):** Managed via server environment variables.
+2. **Data Keys (DK):** Ephemeral keys generated per secret.
+
+
+
+### Technical Details
+* **Algorithm:** `aes-256-gcm`
+* **Integrity:** Authentication tags are stored alongside the ciphertext.
+* **Metadata Coupling:** The Vault is integrated with the **Config-Driven UI (Week 3)**, allowing the backend to define security requirements (e.g., password-type inputs) via JSON metadata.
+
+### Consequences
+* **Pros:** High security; rotation of the Master Key is possible without re-encrypting all raw data (just re-wrap the DKs).
+* **Cons:** Slight increase in storage size per secret due to IVs, Tags, and Wrapped Keys metadata.
+
+

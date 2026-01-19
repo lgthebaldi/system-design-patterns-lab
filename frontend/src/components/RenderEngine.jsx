@@ -1,3 +1,4 @@
+// frontend/src/components/RenderEngine.jsx
 import React from 'react';
 
 const ComponentMap = {
@@ -27,11 +28,16 @@ const ComponentMap = {
       <p style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '10px 0', color: '#2c3e50' }}>{value}</p>
     </div>
   ),
-  input: ({ label, validation }) => (
+  input: ({ id, label, placeholder, formData, setFormData }) => (
     <div style={{ marginBottom: '15px', width: '100%' }}>
       <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>{label}</label>
-      <input type="text" style={{ padding: '10px', width: '100%', borderRadius: '4px', border: '1px solid #ccc' }} />
-      {validation && <small style={{ color: '#e74c3c', display: 'block', marginTop: '5px' }}>{validation.errorMessage}</small>}
+      <input 
+        type="text" 
+        placeholder={placeholder}
+        value={formData[id] || ''}
+        onChange={(e) => setFormData(prev => ({ ...prev, [id]: e.target.value }))}
+        style={{ padding: '10px', width: '100%', borderRadius: '4px', border: '1px solid #ccc' }} 
+      />
     </div>
   ),
   button: ({ label, color }) => (
@@ -42,16 +48,28 @@ const ComponentMap = {
   )
 };
 
-const RenderEngine = ({ data }) => {
+const RenderEngine = ({ data, formData, setFormData }) => {
   if (!data || !Array.isArray(data)) return null;
   return (
     <>
       {data.map((item, index) => {
-        const Component = ComponentMap[item.type];
+        // Fallback para 'input' se o tipo for omitido mas houver ID
+        const componentType = item.type || (item.id ? 'input' : null);
+        const Component = ComponentMap[componentType];
+        
         if (!Component) return null;
+        
         return (
-          <Component key={index} {...item.props} validation={item.validation}>
-            {item.children && <RenderEngine data={item.children} />}
+          <Component 
+            key={index} 
+            {...item.props} 
+            {...item} 
+            formData={formData} 
+            setFormData={setFormData}
+          >
+            {item.children && (
+                <RenderEngine data={item.children} formData={formData} setFormData={setFormData} />
+            )}
           </Component>
         );
       })}
