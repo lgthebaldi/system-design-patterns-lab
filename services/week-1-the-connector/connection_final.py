@@ -7,9 +7,6 @@ from dotenv import load_dotenv
 # 1. Load Environment Variables
 load_dotenv()
 
-# DEBUG: Check if variables are actually being loaded
-print(f"DEBUG: Username loaded: {os.getenv('SF_USERNAME')}")
-print(f"DEBUG: Key loaded: {os.getenv('SF_CONSUMER_KEY')}")
 
 if os.getenv('SF_USERNAME') is None:
     print("❌ ERROR: .env file not found or empty!")
